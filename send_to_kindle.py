@@ -1,0 +1,131 @@
+import sys
+import argparse
+import pathlib
+import smtplib
+import configparser
+
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import formatdate
+
+CONFIG_PATH = f"{pathlib.Path.home()}\.send_to_kindle_rc"
+
+def generate_message(send_from, send_to, subject, files):
+    msg = MIMEMultipart()
+    msg["From"] = send_from
+    msg["To"] = send_to
+    msg["Date"] = formatdate(localtime=True)
+    msg["Subject"] = subject
+
+    msg.attach(MIMEText(""))
+
+    for file in files:
+        with open(file, "rb") as file_stream:
+            part = MIMEApplication(file_stream.read(), Name = file.name)
+            part["Content-Disposition"] = f"attachment; filename=\"{file.name}\""
+            msg.attach(part)
+
+    return msg.as_string()
+
+def parse_args():
+    parser = argparse.ArgumentParser(description=f"""Send books to your kinda via email. 
+    If you want to avoid verification mail sent by Amazon, make sure your kindle email address is different 
+    than your sending address and it contains small letters, capital letters, symbols and numbers (ex. mY_k14_D1e@kindle.com).""")
+
+    subparser = parser.add_subparsers(title="command", dest="command")
+
+    default = subparser.add_parser("send", help="send books")
+    default.add_argument("books", nargs="+", type=pathlib.Path, help="books that you want to send")
+    default.add_argument("-c", "--convert", action="store_true", help="convert files to kindle format")
+
+    config = subparser.add_parser("config", help="configure application")
+    config.add_argument("--server", type=str, help="email server")
+    config.add_argument("--port", type=int, help="email server port")
+    config.add_argument("--email", type=str, help="email address")
+    config.add_argument("--email-password", type=str, help="email password")
+    config.add_argument("--kindle-email", type=str, help="kindle email address")
+
+    return parser.parse_args()
+
+def read_config():
+    config = configparser.ConfigParser()
+    config["config"] = {"server": "",
+                        "port": "-1",
+                        "email": "",
+                        "email_password": "",
+                        "kindle_email": ""}
+    config.read(CONFIG_PATH)
+    return config
+
+def invalid_config_fields(config):
+    invalid_fields = []
+    if config["config"]["server"] is "":
+         invalid_fields.append("server")
+    if config["config"].getint("port") is -1:
+         invalid_fields.append("port")
+    if config["config"]["email"] is "":
+         invalid_fields.append("email")
+    if config["config"]["email_password"] is "":
+         invalid_fields.append("email_password")
+    if config["config"]["kindle_email"] is "":
+         invalid_fields.append("kindle_email")
+    
+    return invalid_fields
+
+def send(args):
+    config = read_config()
+
+    invalid_fields = invalid_config_fields(config)
+    if len(invalid_fields) > 0:
+        print("ERROR: not all config fields are set, this application can't work without all fields being set.")
+        print(f"Not set fields: {[f.replace('_', '-') for f in invalid_fields]}")
+        return
+
+    if len(args.books) > 25:
+        print("ERROR: You can't send more than 25 books.", file=sys.stderr)
+        return
+
+    subject = "convert" if args.convert else ""
+
+    server = config["config"]["server"]
+    port = int(config["config"]["port"])
+    email = config["config"]["email"]
+    email_password = config["config"]["email_password"]
+    kindle_email = config["config"]["kindle_email"]
+
+    with smtplib.SMTP_SSL(server, port) as server:
+        server.login(email, email_password)
+        message = generate_message(email, kindle_email, subject, args.books)
+        server.sendmail(email, kindle_email, message)
+    
+    print("Your books were sent successfully!")
+
+def config(args):
+    config = read_config()
+
+    if args.server is not None:
+        config["config"]["server"] = args.server
+    if args.port is not None:
+        config["config"]["port"] = str(args.port)
+    if args.email is not None:
+        config["config"]["email"] = args.email
+    if args.email_password is not None:
+        config["config"]["email_password"] = args.email_password
+    if args.kindle_email is not None:
+        config["config"]["kindle_email"] = args.kindle_email
+
+    with open(CONFIG_PATH, "w") as configfile:
+        config.write(configfile)
+    
+    invalid_fields = invalid_config_fields(config)
+    if len(invalid_fields) > 0:
+        print("WARNING: not all config fields are set, this application can't work without all fields being set")
+        print(f"Not set fields: {[f.replace('_', '-') for f in invalid_fields]}")
+
+args = parse_args()
+
+if args.command == "send":
+    send(args)    
+elif args.command == "config":
+    config(args)

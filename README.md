@@ -1,2 +1,3 @@
-# send-to-kindle
-Small application which sends documents to your kindle device
+# Send to kindle
+
+Small application which sends documents to your kindle device.
