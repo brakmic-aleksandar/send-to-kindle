@@ -9,7 +9,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate
 
-CONFIG_PATH = f"{pathlib.Path.home()}\.send_to_kindle_rc"
+CONFIG_PATH = pathlib.Path.home()/".config/.sendtokindlerc"
 
 def generate_message(send_from, send_to, subject, files):
     msg = MIMEMultipart()
@@ -29,8 +29,8 @@ def generate_message(send_from, send_to, subject, files):
     return msg.as_string()
 
 def parse_args():
-    parser = argparse.ArgumentParser(description=f"""Send books to your kinda via email. 
-    If you want to avoid verification mail sent by Amazon, make sure your kindle email address is different 
+    parser = argparse.ArgumentParser(description=f"""Send books to your kinda via email.
+    If you want to avoid verification mail sent by Amazon, make sure your kindle email address is different
     than your sending address and it contains small letters, capital letters, symbols and numbers (ex. mY_k14_D1e@kindle.com).""")
 
     subparser = parser.add_subparsers(title="command", dest="command")
@@ -60,17 +60,17 @@ def read_config():
 
 def invalid_config_fields(config):
     invalid_fields = []
-    if config["config"]["server"] is "":
+    if config["config"]["server"] == "":
          invalid_fields.append("server")
-    if config["config"].getint("port") is -1:
+    if config["config"].getint("port") == -1:
          invalid_fields.append("port")
-    if config["config"]["email"] is "":
+    if config["config"]["email"] == "":
          invalid_fields.append("email")
-    if config["config"]["email_password"] is "":
+    if config["config"]["email_password"] == "":
          invalid_fields.append("email_password")
-    if config["config"]["kindle_email"] is "":
+    if config["config"]["kindle_email"] == "":
          invalid_fields.append("kindle_email")
-    
+
     return invalid_fields
 
 def send(args):
@@ -98,7 +98,7 @@ def send(args):
         server.login(email, email_password)
         message = generate_message(email, kindle_email, subject, args.books)
         server.sendmail(email, kindle_email, message)
-    
+
     print("Your books were sent successfully!")
 
 def config(args):
@@ -117,7 +117,7 @@ def config(args):
 
     with open(CONFIG_PATH, "w") as configfile:
         config.write(configfile)
-    
+
     invalid_fields = invalid_config_fields(config)
     if len(invalid_fields) > 0:
         print("WARNING: not all config fields are set, this application can't work without all fields being set")
@@ -126,6 +126,6 @@ def config(args):
 args = parse_args()
 
 if args.command == "send":
-    send(args)    
+    send(args)
 elif args.command == "config":
     config(args)
