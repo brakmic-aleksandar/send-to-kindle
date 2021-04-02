@@ -29,7 +29,7 @@ def generate_message(send_from, send_to, subject, files):
     return msg.as_string()
 
 def parse_args():
-    parser = argparse.ArgumentParser(description=f"""Send books to your kinda via email.
+    parser = argparse.ArgumentParser(description=f"""Send books to your kindle via email.
     If you want to avoid verification mail sent by Amazon, make sure your kindle email address is different
     than your sending address and it contains small letters, capital letters, symbols and numbers (ex. mY_k14_D1e@kindle.com).""")
 
